@@ -1,0 +1,38 @@
+---
+
+- name: Run the following on the following hosts
+  hosts: dev
+  gather_facts: no
+  vars_files: secrets.yml
+
+
+  tasks:
+  - name: Copy the required module
+    copy:
+      src: python-pexpect-3.3-7.4.noarch.rpm
+      dest: /tmp/python-pexpect-3.3-7.4.noarch.rpm
+
+  - name: Install the rpm
+    package: 
+     name: /tmp/python-pexpect-3.3-7.4.noarch.rpm  
+     state: present
+
+  - name: Generate the password for me
+    expect:
+      command: grub-md5-crypt
+      responses:
+        Password: "{{ vault_pass }}"
+        Retype password: "{{ vault_pass }}"
+    register: password
+ 
+  - name: Show me the output
+    debug:
+       var=password.stdout_lines[2]
+
+  - name: Copy the generated file to /boot/grub/menu.lst
+    lineinfile:
+         path: /boot/grub/menu.lst
+         # regexp: '^timeout='
+         insertafter: '^timeout=5'
+         line: password --md5 {{ password.stdout_lines[2] }}
+
